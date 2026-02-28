@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlinx.coroutines.flow.combine
 
 /**
  * =============================================================================
@@ -122,6 +123,9 @@ class ChefViewModel @Inject constructor(
             initialValue = emptyList()
         )
 
+
+
+
     // =========================================================================
     // ESTADO DE GENERACIÓN DE RECETAS
     // =========================================================================
@@ -140,6 +144,22 @@ class ChefViewModel @Inject constructor(
 
     private var imageGenerationJob: Job? = null
 
+    //Favoritos
+    private val _showFavorites = MutableStateFlow(false)
+    val showFavorites: StateFlow<Boolean> = _showFavorites.asStateFlow()
+
+    val filteredRecipes: StateFlow<List<Recipe>> =
+        combine(recipes, showFavorites) { recipeList, favorites ->
+            if (favorites) {
+                recipeList.filter { it.isFavorite }
+            } else {
+                recipeList
+            }
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
     // =========================================================================
     // ACCIONES DE AUTENTICACIÓN
     // =========================================================================
@@ -284,6 +304,19 @@ class ChefViewModel @Inject constructor(
             firestoreRepository.deleteRecipe(recipeId)
         }
     }
+
+    // Estado favorito
+    fun toggleFavorite(recipe: Recipe){
+        viewModelScope.launch {
+            firestoreRepository.updateFavoriteStatus(recipe.id, !recipe.isFavorite)
+        }
+    }
+
+    // Permite cambiar entre todas las recetas y las recetas favoritas
+    fun toggleFavoritesFilter() {
+        _showFavorites.value = !_showFavorites.value
+    }
+
 
     // =========================================================================
     // ACCIONES DE GENERACIÓN DE IMÁGENES CON CACHE
