@@ -57,4 +57,7 @@ interface IFirestoreRepository {
      * @return Result indicando éxito o error
      */
     suspend fun updateGeneratedImageUrl(recipeId: String, imageUrl: String): Result<Unit>
+
+    /** Funcion para actualizar el estado de favorito */
+    suspend fun updateFavoriteStatus(recipeId: String, isFavorite: Boolean): Result<Unit>
 }
