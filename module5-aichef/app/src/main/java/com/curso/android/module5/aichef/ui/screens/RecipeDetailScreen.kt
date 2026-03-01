@@ -44,6 +44,24 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.curso.android.module5.aichef.domain.model.UiState
 import com.curso.android.module5.aichef.ui.viewmodel.ChefViewModel
+import android.graphics.Bitmap
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.ui.graphics.layer.drawLayer
+import com.curso.android.module5.aichef.util.ShareUtils
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * =============================================================================
@@ -130,6 +148,10 @@ fun RecipeDetailScreen(
 
     // Estado de la generación de imagen
     val imageState by viewModel.imageGenerationState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    var share by remember { mutableStateOf(false) }
+    val shareableContentLayer = rememberGraphicsLayer()
 
     // =========================================================================
     // SIDE EFFECT: Verificar Cache o Generar Imagen
@@ -178,6 +200,39 @@ fun RecipeDetailScreen(
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
+        },
+        floatingActionButton = {
+            if (recipe != null) {
+                FloatingActionButton(
+                    onClick = {
+                        if (!share) {
+                            share = true
+                            coroutineScope.launch {
+                                val bitmap: Bitmap = withContext(Dispatchers.Default) {
+                                    shareableContentLayer.toImageBitmap().asAndroidBitmap()
+                                }
+                                ShareUtils.shareBitmap(context, bitmap)
+                                share = false
+                            }
+                        }
+                    },
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    if (share) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "Compartir receta",
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
+            }
         }
     ) { paddingValues ->
         if (recipe == null) {
@@ -203,6 +258,22 @@ fun RecipeDetailScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp)
             ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .drawWithContent {
+                            shareableContentLayer.record {
+                                this@drawWithContent.drawContent()
+                            }
+                            drawLayer(shareableContentLayer)
+                        }
+                ) {
+                    Text(
+                        text = recipe.title,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
                 // Sección de imagen generada por IA con cache
                 RecipeImageSection(
                     imageState = imageState,
@@ -221,6 +292,7 @@ fun RecipeDetailScreen(
 
                 // Sección de ingredientes
                 IngredientsSection(ingredients = recipe.ingredients)
+            }
 
                 Spacer(modifier = Modifier.height(24.dp))
 

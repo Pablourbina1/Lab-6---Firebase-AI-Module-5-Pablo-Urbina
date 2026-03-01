@@ -17,7 +17,10 @@ object ShareUtils {
         // 1. Crear archivo temporal en cache
         val cachePath = File(context.cacheDir, "images")
         cachePath.mkdirs()
-        val file = File(cachePath, fileName)
+        cachePath.listFiles()?.forEach { it.delete() }
+
+        val file = File(cachePath, "${System.currentTimeMillis()}_recipe_share.png")
+
         FileOutputStream(file).use { out ->
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
         }
@@ -33,7 +36,8 @@ object ShareUtils {
         val shareIntent = Intent().apply {
             action = Intent.ACTION_SEND
             putExtra(Intent.EXTRA_STREAM, contentUri)
-            type = "image/png"
+            type = "image/*"
+
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
 
